@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.js" integrity="sha512-LnvoEWDFrqGHlHmDD2101OrLcbsfkrzoSpvtSQtxK3RMnRV0eOkhhBN2dXHKRrUU8p2DGRTk35n4O8nWSVe1mQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <style type="text/css">
+        body {
+            background-color: #a0d7b9;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            transition: background-color 0.3s;
+        }
+
+        body.dark-theme {
+            background-color: #2d3748;
+            color: #e2e8f0;
+        }
+
+        #imageContainer {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            border-radius: 50px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        #customText {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            font-size: 20px;
+            color: #3c4f4e;
+            font-weight: bold;
+            background-color: rgba(255, 255, 255, 0.7);
+            padding: 5px 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            z-index: 10;
+        }
+
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            font-size: 14px;
+            color: #3c4f4e;
+            background-color: rgba(255, 255, 255, 0.7);
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            z-index: 10;
+            width: 250px;
+        }
+
+        .button-container {
+            margin: 20px;
+            text-align: center;
+        }
+
+        .button-container button {
+            background-color: #67add9;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 5px;
+            margin: 5px;
+            transition: background-color 0.3s ease;
+        }
+
+        .button-container button:hover {
+            background-color: #0056b3;
+        }
+
+        .form-container {
+            margin: 20px;
+            text-align: center;
+            background-color: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        #nodeList {
+            margin: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .node-item {
+            margin-bottom: 5px;
+            font-size: 16px;
+        }
+
+        #mynetwork {
+            width: 100%;
+            height: 990px;
+            background-color: #a0d7b9;
+            border: 1px solid #a0d7b9;
+        }
+
+        #searchBar {
+            margin: 10px;
+            padding: 10px;
+            width: 300px;
+            font-size: 16px;
+        }
+
+        #nodeInfo {
+            position: absolute;
+            top: 100px;
+            right: 20px;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            z-index: 10;
+            display: none;
+        }
+
+        .dark-theme #mynetwork {
+            background-color: #2d3748;
+            border: 1px solid #4a5568;
+        }
+
+        .dark-theme .form-container, .dark-theme #nodeList {
+            background-color: #4a5568;
+            color: #e2e8f0;
+        }
+
+        .dark-theme #customText, .dark-theme #instructions {
+            background-color: rgba(0, 0, 0, 0.7);
+            color: #e2e8f0;
+        }
+
+        @media (max-width: 768px) {
+            #mynetwork {
+                height: 500px;
+            }
+
+            #instructions, #customText {
+                font-size: 12px;
+                width: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="imageContainer">
+        <img src="/Users/htx/Desktop/Knowledge_Map/resized_image.png" alt="知识图谱" />
+    </div>
+
+    <div id="customText">RC电路稳态响应与模拟示波器知识图谱 </div>
+
+    <div id="instructions">
+        <h4>操作说明：</h4>
+        <p>1. 点击"添加节点"按钮可为已有节点添加子节点。</p>
+        <p>2. 点击"删除节点"按钮可删除已创建的节点。</p>
+        <p>3. 使用搜索栏查找节点。</p>
+        <p>4. 点击节点查看详细信息。</p>
+        <p>5. 快捷键：Ctrl+Z（撤销），Ctrl+Y（重做）。</p>
+        <p>6. 四川大学电气工程学院</p>
+    </div>
+
+    <div class="button-container">
+        <input type="text" id="searchBar" placeholder="搜索节点..." oninput="searchNodes()">
+        <button onclick="showAddNodeForm()">添加节点</button>
+        <button onclick="showEditNodeForm()">编辑节点</button>
+        <button onclick="showRemoveNodeForm()">删除节点</button>
+        <button onclick="exportGraph()">导出图谱</button>
+        <button onclick="document.getElementById('importFile').click()">导入图谱</button>
+        <input type="file" id="importFile" style="display: none;" accept=".json" onchange="importGraph(event)">
+        <button onclick="toggleTheme()">切换主题</button>
+        <button onclick="toggleLanguage()">切换语言（中/英）</button>
+        <select id="layoutSelect" onchange="changeLayout()">
+            <option value="default">默认布局</option>
+            <option value="hierarchical">分层布局</option>
+            <option value="circular">圆形布局</option>
+        </select>
+    </div>
+
+    <div class="card" style="width: 100%">
+        <div id="mynetwork" class="card-body"></div>
+    </div>
+
+    <div class="form-container" id="addNodeForm" style="display: none;">
+        <h3>添加节点</h3>
+        <form onsubmit="addNode(event)">
+            <label for="nodeId">节点ID:</label><br>
+            <input type="text" id="nodeId" required><br>
+            <label for="nodeLabel">节点标签:</label><br>
+            <input type="text" id="nodeLabel" required><br><br>
+            <label for="parentNode">选择父节点:</label><br>
+            <select id="parentNode" required></select><br><br>
+            <label for="nodeColor">选择圆圈颜色:</label><br>
+            <input type="color" id="nodeColor" value="#FF6600"><br><br>
+            <input type="submit" value="添加节点">
+            <button type="button" onclick="hideAddNodeForm()">取消</button>
+        </form>
+    </div>
+
+    <div class="form-container" id="editNodeForm" style="display: none;">
+        <h3>编辑节点</h3>
+        <form onsubmit="editNode(event)">
+            <label for="editNodeId">选择节点:</label><br>
+            <select id="editNodeId" required></select><br><br>
+            <label for="editNodeLabel">新标签:</label><br>
+            <input type="text" id="editNodeLabel" required><br><br>
+            <label for="editNodeColor">新颜色:</label><br>
+            <input type="color" id="editNodeColor" value="#FF6600"><br><br>
+            <input type="submit" value="保存更改">
+            <button type="button" onclick="hideEditNodeForm()">取消</button>
+        </form>
+    </div>
+
+    <div class="form-container" id="removeNodeForm" style="display: none;">
+        <h3>删除节点</h3>
+        <form onsubmit="removeNode(event)">
+            <label for="nodeToRemove">选择要删除的节点:</label><br>
+            <select id="nodeToRemove" required></select><br><br>
+            <input type="submit" value="删除节点">
+            <button type="button" onclick="hideRemoveNodeForm()">取消</button>
+        </form>
+    </div>
+
+    <div id="nodeInfo">
+        <h4>节点信息</h4>
+        <p id="nodeInfoContent"></p>
+    </div>
+
+    <div id="nodeList">
+        <h3>现有节点列表</h3>
+        <ul id="nodeListItems"></ul>
+    </div>
+
+    <script type="text/javascript">
+        // 语言配置
+        const translations = {
+            zh: {
+                addNode: "添加节点",
+                editNode: "编辑节点",
+                removeNode: "删除节点",
+                exportGraph: "导出图谱",
+                importGraph: "导入图谱",
+                toggleTheme: "切换主题",
+                toggleLanguage: "切换语言（中/英）",
+                searchPlaceholder: "搜索节点...",
+                instructions: `
+                    <h4>操作说明：</h4>
+                    <p>1. 点击"添加节点"按钮可为已有节点添加子节点。</p>
+                    <p>2. 点击"编辑节点"按钮修改节点信息。</p>
+                    <p>3. 点击"删除节点"按钮可删除已创建的节点。</p>
+                    <p>4. 使用搜索栏查找节点。</p>
+                    <p>5. 点击节点查看详细信息。</p>
+                    <p>6. 快捷键：Ctrl+Z（撤销），Ctrl+Y（重做）。</p>
+                    <p>7. 本图谱开发者为四川大学电气工程学院黄天歆（学号2023141410314）</p>
+                `
+            },
+            en: {
+                addNode: "Add Node",
+                editNode: "Edit Node",
+                removeNode: "Remove Node",
+                exportGraph: "Export Graph",
+                importGraph: "Import Graph",
+                toggleTheme: "Toggle Theme",
+                toggleLanguage: "Switch Language (ZH/EN)",
+                searchPlaceholder: "Search nodes...",
+                instructions: `
+                    <h4>Instructions:</h4>
+                    <p>1. Click "Add Node" to add a child node.</p>
+                    <p>2. Click "Edit Node" to modify node details.</p>
+                    <p>3. Click "Remove Node" to delete a node.</p>
+                    <p>4. Use the search bar to find nodes.</p>
+                    <p>5. Click a node to view details.</p>
+                    <p>6. Shortcuts: Ctrl+Z (Undo), Ctrl+Y (Redo).</p>
+                    <p>7. Developed by Tianxin Huang, Sichuan University (ID: 2023141410314)</p>
+                `
+            }
+        };
+
+        let currentLang = 'zh';
+        let isDarkTheme = false;
+        let undoStack = [];
+        let redoStack = [];
+
+        // 初始化节点和边
+        var nodes = new vis.DataSet([
+            {"color": "purple", "id": "root", "label": "RC电路频率响应实验", "shape": "dot", "size": 30},
+            {"color": "blue", "id": "instruments", "label": "仪器", "shape": "dot", "size": 25},
+            {"color": "blue", "id": "lab_setup", "label": "实验环境", "shape": "dot", "size": 25},
+            {"color": "blue", "id": "measurement_tech", "label": "测量目标", "shape": "dot", "size": 25},
+            {"color": "blue", "id": "rc_concepts", "label": "RC电路", "shape": "dot", "size": 25},
+            {"color": "blue", "id": "experiment_procedure", "label": "实验步骤", "shape": "dot", "size": 25},
+            {"color": "skyblue", "id": "示波器_1", "label": "示波器", "shape": "dot", "size": 25},
+            {"color": "orange", "id": "探头", "label": "探头", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "显示屏", "label": "显示屏", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "电子束", "label": "电子束", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "信号输入端口", "label": "信号输入端口", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "时间基准控制", "label": "时间基准控制", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "垂直控制", "label": "垂直控制", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "触发控制", "label": "触发控制", "shape": "dot", "size": 18},
+            {"color": "skyblue", "id": "信号发生器_1", "label": "信号发生器", "shape": "dot", "size": 25},
+            {"color": "orange", "id": "频率控制", "label": "频率控制", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "幅度控制", "label": "幅度控制", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "波形发生模块", "label": "波形发生模块", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "输出端口", "label": "输出端口", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "调频调幅模块", "label": "调频调幅模块", "shape": "dot", "size": 18},
+            {"color": "skyblue", "id": "万用表_1", "label": "万用表", "shape": "dot", "size": 25},
+            {"color": "orange", "id": "电压测量_1", "label": "电压测量", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "电流测量_1", "label": "电流测量", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "电阻测量", "label": "电阻测量", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "频率测量_1", "label": "频率测量", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "二极管测试", "label": "二极管测试", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "连续性检测", "label": "连续性检测", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "温度测量", "label": "温度测量", "shape": "dot", "size": 18},
+            {"color": "skyblue", "id": "频谱分析仪_1", "label": "频谱分析仪", "shape": "dot", "size": 25},
+            {"color": "orange", "id": "频率分析", "label": "频率分析", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "幅度分析", "label": "幅度分析", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "噪声分析", "label": "噪声分析", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "调制分析", "label": "调制分析", "shape": "dot", "size": 18},
+            {"color": "skyblue", "id": "直流电源", "label": "直流电源", "shape": "dot", "size": 25},
+            {"color": "orange", "id": "定压输出", "label": "定压输出", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "定流输出", "label": "定流输出", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "定功率输出", "label": "定功率输出", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "电压调节", "label": "电压调节", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "电流调节", "label": "电流调节", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "电源保护", "label": "电源保护", "shape": "dot", "size": 18},
+            {"color": "skyblue", "id": "交流电源", "label": "交流电源", "shape": "dot", "size": 25},
+            {"color": "orange", "id": "定频输出", "label": "定频输出", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "定电流输出", "label": "定电流输出", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "正弦波输出", "label": "正弦波输出", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "方波输出", "label": "方波输出", "shape": "dot", "size": 18},
+            {"color": "skyblue", "id": "实验室", "label": "实验室", "shape": "dot", "size": 25},
+            {"color": "orange", "id": "温湿度控制", "label": "温湿度控制", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "光照控制", "label": "光照控制", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "静电消除", "label": "静电消除", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "电磁干扰防护", "label": "电磁干扰防护", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "地面接地", "label": "地面接地", "shape": "dot", "size": 18},
+            {"color": "skyblue", "id": "安全设施", "label": "安全设施", "shape": "dot", "size": 25},
+            {"color": "orange", "id": "灭火器", "label": "灭火器", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "急救包", "label": "急救包", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "紧急电源切断装置", "label": "紧急电源切断装置", "shape": "dot", "size": 18},
+            {"color": "skyblue", "id": "电压测量_2", "label": "电压测量", "shape": "dot", "size": 25},
+            {"color": "orange", "id": "直流电压", "label": "直流电压", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "交流电压", "label": "交流电压", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "峰值电压", "label": "峰值电压", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "平均电压", "label": "平均电压", "shape": "dot", "size": 18},
+            {"color": "skyblue", "id": "电流测量_2", "label": "电流测量", "shape": "dot", "size": 25},
+            {"color": "orange", "id": "直流电流", "label": "直流电流", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "交流电流", "label": "交流电流", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "峰值电流", "label": "峰值电流", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "平均电流", "label": "平均电流", "shape": "dot", "size": 18},
+            {"color": "skyblue", "id": "频率测量_2", "label": "频率测量", "shape": "dot", "size": 25},
+            {"color": "orange", "id": "信号频率", "label": "信号频率", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "谐波频率", "label": "谐波频率", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "调频频率", "label": "调频频率", "shape": "dot", "size": 18},
+            {"color": "skyblue", "id": "波形分析", "label": "波形分析", "shape": "dot", "size": 25},
+            {"color": "orange", "id": "波形失真", "label": "波形失真", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "周期分析", "label": "周期分析", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "波形失真度", "label": "波形失真度", "shape": "dot", "size": 18},
+            {"color": "orange", "id": "幅度不对称", "label": "幅度不对称", "shape": "dot", "size": 18},
+            {"color": "yellow", "id": "rc_circuit", "label": "RC电路", "shape": "dot", "size": 18},
+            {"color": "yellow", "id": "rc_low_pass", "label": "低通滤波器", "shape": "dot", "size": 18},
+            {"color": "yellow", "id": "rc_high_pass", "label": "高通滤波器", "shape": "dot", "size": 18},
+            {"color": "yellow", "id": "frequency_response", "label": "频率响应", "shape": "dot", "size": 18},
+            {"color": "yellow", "id": "bode_plot", "label": "波特图", "shape": "dot", "size": 18},
+            {"color": "green", "id": "step1", "label": "步骤1：设置RC电路", "shape": "dot", "size": 18},
+            {"color": "green", "id": "step2", "label": "步骤2：配置信号发生器", "shape": "dot", "size": 18},
+            {"color": "green", "id": "step3", "label": "步骤3：使用示波器测量输出", "shape": "dot", "size": 18},
+            {"color": "green", "id": "step4", "label": "步骤4：记录频率响应数据", "shape": "dot", "size": 18}
+        ]);
+
+        var edges = new vis.DataSet([
+            { "arrows": "to", "from": "root", "to": "instruments", "width": 2 },
+            { "arrows": "to", "from": "root", "to": "lab_setup", "width": 2 },
+            { "arrows": "to", "from": "root", "to": "measurement_tech", "width": 2 },
+            { "arrows": "to", "from": "root", "to": "rc_concepts", "width": 2 },
+            { "arrows": "to", "from": "root", "to": "experiment_procedure", "width": 2 },
+            { "arrows": "to", "from": "instruments", "to": "示波器_1", "width": 1 },
+            { "arrows": "to", "from": "instruments", "to": "信号发生器_1", "width": 1 },
+            { "arrows": "to", "from": "instruments", "to": "万用表_1", "width": 1 },
+            { "arrows": "to", "from": "instruments", "to": "频谱分析仪_1", "width": 1 },
+            { "arrows": "to", "from": "instruments", "to": "直流电源", "width": 1 },
+            { "arrows": "to", "from": "instruments", "to": "交流电源", "width": 1 },
+            { "arrows": "to", "from": "lab_setup", "to": "实验室", "width": 1 },
+            { "arrows": "to", "from": "lab_setup", "to": "安全设施", "width": 1 },
+            { "arrows": "to", "from": "实验室", "to": "instruments", "width": 1 },
+            { "arrows": "to", "from": "实验室", "to": "温湿度控制", "width": 1 },
+            { "arrows": "to", "from": "实验室", "to": "光照控制", "width": 1 },
+            { "arrows": "to", "from": "实验室", "to": "静电消除", "width": 1 },
+            { "arrows": "to", "from": "实验室", "to": "电磁干扰防护", "width": 1 },
+            { "arrows": "to", "from": "实验室", "to": "地面接地", "width": 1 },
+            { "arrows": "to", "from": "安全设施", "to": "灭火器", "width": 1 },
+            { "arrows": "to", "from": "安全设施", "to": "急救包", "width": 1 },
+            { "arrows": "to", "from": "安全设施", "to": "紧急电源切断装置", "width": 1 },
+            { "arrows": "to", "from": "measurement_tech", "to": "电压测量_2", "width": 1 },
+            { "arrows": "to", "from": "measurement_tech", "to": "电流测量_2", "width": 1 },
+            { "arrows": "to", "from": "measurement_tech", "to": "频率测量_2", "width": 1 },
+            { "arrows": "to", "from": "measurement_tech", "to": "波形分析", "width": 1 },
+            { "arrows": "to", "from": "rc_concepts", "to": "rc_circuit", "width": 1 },
+            { "arrows": "to", "from": "rc_concepts", "to": "rc_low_pass", "width": 1 },
+            { "arrows": "to", "from": "rc_concepts", "to": "rc_high_pass", "width": 1 },
+            { "arrows": "to", "from": "rc_concepts", "to": "frequency_response", "width": 1 },
+            { "arrows": "to", "from": "rc_concepts", "to": "bode_plot", "width": 1 },
+            { "arrows": "to", "from": "experiment_procedure", "to": "step1", "width": 1 },
+            { "arrows": "to", "from": "step1", "to": "step2", "width": 1 },
+            { "arrows": "to", "from": "step2", "to": "step3", "width": 1 },
+            { "arrows": "to", "from": "step3", "to": "step4", "width": 1 },
+            { "arrows": "to", "from": "step1", "to": "rc_circuit", "width": 1 },
+            { "arrows": "to", "from": "step2", "to": "信号发生器_1", "width": 1 },
+            { "arrows": "to", "from": "step3", "to": "示波器_1", "width": 1 },
+            { "arrows": "to", "from": "step4", "to": "波形分析", "width": 1 },
+            { "arrows": "to", "from": "示波器_1", "to": "探头", "width": 1 },
+            { "arrows": "to", "from": "示波器_1", "to": "显示屏", "width": 1 },
+            { "arrows": "to", "from": "示波器_1", "to": "电子束", "width": 1 },
+            { "arrows": "to", "from": "示波器_1", "to": "信号输入端口", "width": 1 },
+            { "arrows": "to", "from": "示波器_1", "to": "时间基准控制", "width": 1 },
+            { "arrows": "to", "from": "示波器_1", "to": "垂直控制", "width": 1 },
+            { "arrows": "to", "from": "示波器_1", "to": "触发控制", "width": 1 },
+            { "arrows": "to", "from": "信号发生器_1", "to": "频率控制", "width": 1 },
+            { "arrows": "to", "from": "信号发生器_1", "to": "幅度控制", "width": 1 },
+            { "arrows": "to", "from": "信号发生器_1", "to": "波形发生模块", "width": 1 },
+            { "arrows": "to", "from": "信号发生器_1", "to": "输出端口", "width": 1 },
+            { "arrows": "to", "from": "信号发生器_1", "to": "调频调幅模块", "width": 1 },
+            { "arrows": "to", "from": "万用表_1", "to": "电压测量_1", "width": 1 },
+            { "arrows": "to", "from": "万用表_1", "to": "电流测量_1", "width": 1 },
+            { "arrows": "to", "from": "万用表_1", "to": "电阻测量", "width": 1 },
+            { "arrows": "to", "from": "万用表_1", "to": "频率测量_1", "width": 1 },
+            { "arrows": "to", "from": "万用表_1", "to": "二极管测试", "width": 1 },
+            { "arrows": "to", "from": "万用表_1", "to": "连续性检测", "width": 1 },
+            { "arrows": "to", "from": "万用表_1", "to": "温度测量", "width": 1 },
+            { "arrows": "to", "from": "频谱分析仪_1", "to": "频率分析", "width": 1 },
+            { "arrows": "to", "from": "频谱分析仪_1", "to": "幅度分析", "width": 1 },
+            { "arrows": "to", "from": "频谱分析仪_1", "to": "噪声分析", "width": 1 },
+            { "arrows": "to", "from": "频谱分析仪_1", "to": "调制分析", "width": 1 },
+            { "arrows": "to", "from": "直流电源", "to": "定压输出", "width": 1 },
+            { "arrows": "to", "from": "直流电源", "to": "定流输出", "width": 1 },
+            { "arrows": "to", "from": "直流电源", "to": "定功率输出", "width": 1 },
+            { "arrows": "to", "from": "直流电源", "to": "电压调节", "width": 1 },
+            { "arrows": "to", "from": "直流电源", "to": "电流调节", "width": 1 },
+            { "arrows": "to", "from": "直流电源", "to": "电源保护", "width": 1 },
+            { "arrows": "to", "from": "交流电源", "to": "定频输出", "width": 1 },
+            { "arrows": "to", "from": "交流电源", "to": "定电流输出", "width": 1 },
+            { "arrows": "to", "from": "交流电源", "to": "正弦波输出", "width": 1 },
+            { "arrows": "to", "from": "交流电源", "to": "方波输出", "width": 1 },
+            { "arrows": "to", "from": "电压测量_2", "to": "直流电压", "width": 1 },
+            { "arrows": "to", "from": "电压测量_2", "to": "交流电压", "width": 1 },
+            { "arrows": "to", "from": "电压测量_2", "to": "峰值电压", "width": 1 },
+            { "arrows": "to", "from": "电压测量_2", "to": "平均电压", "width": 1 },
+            { "arrows": "to", "from": "电流测量_2", "to": "直流电流", "width": 1 },
+            { "arrows": "to", "from": "电流测量_2", "to": "交流电流", "width": 1 },
+            { "arrows": "to", "from": "电流测量_2", "to": "峰值电流", "width": 1 },
+            { "arrows": "to", "from": "电流测量_2", "to": "平均电流", "width": 1 },
+            { "arrows": "to", "from": "频率测量_2", "to": "信号频率", "width": 1 },
+            { "arrows": "to", "from": "频率测量_2", "to": "谐波频率", "width": 1 },
+            { "arrows": "to", "from": "频率测量_2", "to": "调频频率", "width": 1 },
+            { "arrows": "to", "from": "波形分析", "to": "波形失真", "width": 1 },
+            { "arrows": "to", "from": "波形分析", "to": "周期分析", "width": 1 },
+            { "arrows": "to", "from": "波形分析", "to": "波形失真度", "width": 1 },
+            { "arrows": "to", "from": "波形分析", "to": "幅度不对称", "width": 1 }
+        ]);
+
+        var container = document.getElementById('mynetwork');
+        var data = { nodes: nodes, edges: edges };
+        var options = {
+            nodes: {
+                shape: "dot",
+                size: 20,
+                font: { size: 15, color: "black", align: "center" }
+            },
+            edges: {
+                color: { color: "gray", highlight: "orange", hover: "orange" },
+                width: 2,
+                smooth: { type: "continuous" }
+            },
+            physics: {
+                enabled: nodes.length > 100 ? false : true,
+                barnesHut: {
+                    gravitationalConstant: -3000,
+                    centralGravity: 0.3,
+                    springLength: 95,
+                    springConstant: 0.04
+                }
+            },
+            layout: { randomSeed: 2 }
+        };
+
+        var network = new vis.Network(container, data, options);
+
+        // 初始化
+        window.onload = function() {
+            loadData();
+            updateUI();
+            network.on("click", showNodeInfo);
+            document.addEventListener('keydown', handleShortcuts);
+        };
+
+        function loadData() {
+            var savedNodes = localStorage.getItem('nodes');
+            var savedEdges = localStorage.getItem('edges');
+            if (savedNodes && savedEdges) {
+                nodes.update(JSON.parse(savedNodes));
+                edges.update(JSON.parse(savedEdges));
+                network.setData({ nodes: nodes, edges: edges });
+            }
+            updateNodeList();
+        }
+
+        function saveData() {
+            localStorage.setItem('nodes', JSON.stringify(nodes.get()));
+            localStorage.setItem('edges', JSON.stringify(edges.get()));
+        }
+
+        function updateUI() {
+            document.getElementById('instructions').innerHTML = translations[currentLang].instructions;
+            document.querySelector('button[onclick="showAddNodeForm()"]').textContent = translations[currentLang].addNode;
+            document.querySelector('button[onclick="showEditNodeForm()"]').textContent = translations[currentLang].editNode;
+            document.querySelector('button[onclick="showRemoveNodeForm()"]').textContent = translations[currentLang].removeNode;
+            document.querySelector('button[onclick="exportGraph()"]').textContent = translations[currentLang].exportGraph;
+            document.querySelector('button[onclick="document.getElementById(\'importFile\').click()"]').textContent = translations[currentLang].importGraph;
+            document.querySelector('button[onclick="toggleTheme()"]').textContent = translations[currentLang].toggleTheme;
+            document.querySelector('button[onclick="toggleLanguage()"]').textContent = translations[currentLang].toggleLanguage;
+            document.getElementById('searchBar').placeholder = translations[currentLang].searchPlaceholder;
+        }
+
+        function showAddNodeForm() {
+            document.getElementById('addNodeForm').style.display = 'block';
+            document.getElementById('editNodeForm').style.display = 'none';
+            document.getElementById('removeNodeForm').style.display = 'none';
+            populateParentNodeSelect();
+        }
+
+        function hideAddNodeForm() {
+            document.getElementById('addNodeForm').style.display = 'none';
+        }
+
+        function showEditNodeForm() {
+            document.getElementById('editNodeForm').style.display = 'block';
+            document.getElementById('addNodeForm').style.display = 'none';
+            document.getElementById('removeNodeForm').style.display = 'none';
+            populateEditNodeSelect();
+        }
+
+        function hideEditNodeForm() {
+            document.getElementById('editNodeForm').style.display = 'none';
+        }
+
+        function showRemoveNodeForm() {
+            document.getElementById('removeNodeForm').style.display = 'block';
+            document.getElementById('addNodeForm').style.display = 'none';
+            document.getElementById('editNodeForm').style.display = 'none';
+            populateRemoveNodeSelect();
+        }
+
+        function hideRemoveNodeForm() {
+            document.getElementById('removeNodeForm').style.display = 'none';
+        }
+
+        function populateParentNodeSelect() {
+            var parentNodeSelect = document.getElementById('parentNode');
+            parentNodeSelect.innerHTML = '';
+            nodes.forEach(function(node) {
+                var option = document.createElement('option');
+                option.value = node.id;
+                option.textContent = node.label;
+                parentNodeSelect.appendChild(option);
+            });
+        }
+
+        function populateEditNodeSelect() {
+            var editNodeSelect = document.getElementById('editNodeId');
+            editNodeSelect.innerHTML = '';
+            nodes.forEach(function(node) {
+                var option = document.createElement('option');
+                option.value = node.id;
+                option.textContent = node.label;
+                editNodeSelect.appendChild(option);
+            });
+        }
+
+        function populateRemoveNodeSelect() {
+            var nodeToRemoveSelect = document.getElementById('nodeToRemove');
+            nodeToRemoveSelect.innerHTML = '';
+            nodes.forEach(function(node) {
+                var option = document.createElement('option');
+                option.value = node.id;
+                option.textContent = node.label;
+                nodeToRemoveSelect.appendChild(option);
+            });
+        }
+
+        function addNode(event) {
+            event.preventDefault();
+            var nodeId = document.getElementById('nodeId').value.trim();
+            var nodeLabel = document.getElementById('nodeLabel').value.trim();
+            var parentNode = document.getElementById('parentNode').value;
+            var nodeColor = document.getElementById('nodeColor').value;
+
+            if (!nodeId || !nodeLabel) {
+                alert(currentLang === 'zh' ? "节点ID和标签不能为空" : "Node ID and label cannot be empty");
+                return;
+            }
+            if (nodes.get(nodeId)) {
+                alert(currentLang === 'zh' ? "节点ID已存在" : "Node ID already exists");
+                return;
+            }
+
+            var newNode = { id: nodeId, label: nodeLabel, color: nodeColor, shape: "dot", size: 18 };
+            var newEdge = parentNode ? [{ from: parentNode, to: nodeId, arrows: 'to' }] : [];
+
+            nodes.add(newNode);
+            edges.add(newEdge);
+            saveAction({ type: 'add', nodes: [newNode], edges: newEdge });
+            saveData();
+            updateNodeList();
+            hideAddNodeForm();
+            alert(currentLang === 'zh' ? "节点添加成功" : "Node added successfully");
+        }
+
+        function editNode(event) {
+            event.preventDefault();
+            var nodeId = document.getElementById('editNodeId').value;
+            var newLabel = document.getElementById('editNodeLabel').value.trim();
+            var newColor = document.getElementById('editNodeColor').value;
+
+            if (!newLabel) {
+                alert(currentLang === 'zh' ? "节点标签不能为空" : "Node label cannot be empty");
+                return;
+            }
+
+            var oldNode = nodes.get(nodeId);
+            nodes.update({ id: nodeId, label: newLabel, color: newColor });
+            saveAction({ type: 'edit', nodeId: nodeId, old: oldNode, new: { label: newLabel, color: newColor } });
+            saveData();
+            updateNodeList();
+            hideEditNodeForm();
+            alert(currentLang === 'zh' ? "节点编辑成功" : "Node edited successfully");
+        }
+
+        function removeNode(event) {
+            event.preventDefault();
+            var nodeId = document.getElementById('nodeToRemove').value;
+            var node = nodes.get(nodeId);
+            var relatedEdges = edges.get().filter(edge => edge.from === nodeId || edge.to === nodeId);
+
+            nodes.remove({ id: nodeId });
+            edges.remove(relatedEdges);
+            saveAction({ type: 'remove', nodes: [node], edges: relatedEdges });
+            saveData();
+            updateNodeList();
+            hideRemoveNodeForm();
+            alert(currentLang === 'zh' ? "节点删除成功" : "Node removed successfully");
+        }
+
+        function updateNodeList() {
+            var nodeListItems = document.getElementById('nodeListItems');
+            nodeListItems.innerHTML = '';
+            nodes.forEach(function(node) {
+                var li = document.createElement('li');
+                li.classList.add('node-item');
+                li.textContent = node.label;
+                nodeListItems.appendChild(li);
+            });
+        }
+
+        function searchNodes() {
+            var query = document.getElementById('searchBar').value.toLowerCase();
+            nodes.forEach(function(node) {
+                var matches = node.label.toLowerCase().includes(query);
+                nodes.update({ id: node.id, color: matches ? '#FFD700' : node.color || 'skyblue' });
+            });
+            network.fit();
+        }
+
+        function showNodeInfo(params) {
+            if (params.nodes.length > 0) {
+                var nodeId = params.nodes[0];
+                var node = nodes.get(nodeId);
+                var relatedEdges = edges.get().filter(edge => edge.from === nodeId || edge.to === nodeId);
+                var info = `
+                    <strong>ID:</strong> ${node.id}<br>
+                    <strong>${currentLang === 'zh' ? '标签' : 'Label'}:</strong> ${node.label}<br>
+                    <strong>${currentLang === 'zh' ? '颜色' : 'Color'}:</strong> ${node.color}<br>
+                    <strong>${currentLang === 'zh' ? '关联边' : 'Related Edges'}:</strong> ${relatedEdges.length}
+                `;
+                document.getElementById('nodeInfoContent').innerHTML = info;
+                document.getElementById('nodeInfo').style.display = 'block';
+            } else {
+                document.getElementById('nodeInfo').style.display = 'none';
+            }
+        }
+
+        function exportGraph() {
+            var graphData = { nodes: nodes.get(), edges: edges.get() };
+            var blob = new Blob([JSON.stringify(graphData, null, 2)], { type: 'application/json' });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = 'knowledge_graph.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function importGraph(event) {
+            var file = event.target.files[0];
+            if (!file) return;
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                var graphData = JSON.parse(e.target.result);
+                nodes.clear();
+                edges.clear();
+                nodes.add(graphData.nodes);
+                edges.add(graphData.edges);
+                saveData();
+                updateNodeList();
+                network.setData({ nodes: nodes, edges: edges });
+                alert(currentLang === 'zh' ? "图谱导入成功" : "Graph imported successfully");
+            };
+            reader.readAsText(file);
+        }
+
+        function toggleTheme() {
+            isDarkTheme = !isDarkTheme;
+            document.body.classList.toggle('dark-theme', isDarkTheme);
+            options.nodes.font.color = isDarkTheme ? '#e2e8f0' : 'black';
+            network.setOptions(options);
+        }
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'zh' ? 'en' : 'zh';
+            updateUI();
+        }
+
+        function changeLayout() {
+            var layout = document.getElementById('layoutSelect').value;
+            if (layout === 'hierarchical') {
+                options.layout = { hierarchical: { direction: 'UD', sortMethod: 'directed' } };
+                options.physics.enabled = false;
+            } else if (layout === 'circular') {
+                options.layout = { randomSeed: 2 };
+                options.physics.enabled = true;
+            } else {
+                options.layout = { randomSeed: 2 };
+                options.physics.enabled = nodes.length > 100 ? false : true;
+            }
+            network.setOptions(options);
+        }
+
+        function saveAction(action) {
+            undoStack.push(action);
+            redoStack = [];
+        }
+
+        function undo() {
+            if (undoStack.length === 0) return;
+            var action = undoStack.pop();
+            redoStack.push(action);
+
+            if (action.type === 'add') {
+                nodes.remove(action.nodes);
+                edges.remove(action.edges);
+            } else if (action.type === 'edit') {
+                nodes.update({ id: action.nodeId, label: action.old.label, color: action.old.color });
+            } else if (action.type === 'remove') {
+                nodes.add(action.nodes);
+                edges.add(action.edges);
+            }
+
+            saveData();
+            updateNodeList();
+            network.setData({ nodes: nodes, edges: edges });
+        }
+
+        function redo() {
+            if (redoStack.length === 0) return;
+            var action = redoStack.pop();
+            undoStack.push(action);
+
+            if (action.type === 'add') {
+                nodes.add(action.nodes);
+                edges.add(action.edges);
+            } else if (action.type === 'edit') {
+                nodes.update({ id: action.nodeId, label: action.new.label, color: action.new.color });
+            } else if (action.type === 'remove') {
+                nodes.remove(action.nodes);
+                edges.remove(action.edges);
+            }
+
+            saveData();
+            updateNodeList();
+            network.setData({ nodes: nodes, edges: edges });
+        }
+
+        function handleShortcuts(event) {
+            if (event.ctrlKey && event.key === 'z') {
+                undo();
+            } else if (event.ctrlKey && event.key === 'y') {
+                redo();
+            }
+        }
+    </script>
+</body>
+</html>
